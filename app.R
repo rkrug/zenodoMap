@@ -3,6 +3,7 @@ library(httr2)
 library(jsonlite)
 library(visNetwork)
 library(shinyFiles)
+library(DT)
 
 zenodo_base <- "https://zenodo.org/api/records"
 
@@ -109,6 +110,68 @@ filter_by_keywords <- function(records, keywords_text) {
   records[keep]
 }
 
+is_valid_record <- function(rec) {
+  is.list(rec) && !is.null(rec$id) && !is.null(rec$metadata)
+}
+
+normalize_records <- function(records) {
+  if (is.data.frame(records)) {
+    return(split(records, seq_len(nrow(records))))
+  }
+  if (is.list(records)) {
+    return(records)
+  }
+  list()
+}
+
+sanitize_records <- function(records) {
+  records <- normalize_records(records)
+  Filter(is_valid_record, records)
+}
+
+records_to_table <- function(records) {
+  if (is.null(records) || length(records) == 0) {
+    return(data.frame(
+      Id = character(0),
+      Title = character(0),
+      DOI = character(0),
+      Related = character(0)
+    ))
+  }
+  rows <- lapply(records, function(rec) {
+    rid <- as.character(rec$id)
+    title <- rec$metadata$title %||% ""
+    doi <- rec$metadata$doi %||% rec$metadata$prereserve_doi$doi %||% ""
+    related <- rec$metadata$related_identifiers
+    related_items <- character(0)
+    if (!is.null(related) && length(related) > 0) {
+      related_items <- vapply(related, function(ri) {
+        rel <- ri$relation %||% ""
+        ident <- ri$identifier %||% ""
+        doi_val <- extract_doi(ident)
+        if (doi_val == "") {
+          return("")
+        }
+        paste0(rel, " <a href=\"https://doi.org/", doi_val, "\" target=\"_blank\">", doi_val, "</a>")
+      }, character(1))
+      related_items <- unique(related_items[related_items != ""])
+    }
+    doi_link <- if (doi != "") {
+      paste0("<a href=\"https://doi.org/", doi, "\" target=\"_blank\">", doi, "</a>")
+    } else {
+      ""
+    }
+    data.frame(
+      Id = rid,
+      Title = title,
+      DOI = doi_link,
+      Related = if (length(related_items) > 0) paste(related_items, collapse = "<br>") else "",
+      stringsAsFactors = FALSE
+    )
+  })
+  do.call(rbind, rows)
+}
+
 extract_relations <- function(records, community_ids = NULL) {
   relations <- unique(unlist(lapply(records, function(rec) {
     related <- rec$metadata$related_identifiers
@@ -127,6 +190,22 @@ extract_relations <- function(records, community_ids = NULL) {
     rels[rels != ""]
   })))
   sort(relations)
+}
+
+extract_doi <- function(identifier) {
+  identifier <- tolower(trimws(identifier))
+  if (identifier == "") {
+    return("")
+  }
+  doi_url <- regexpr("doi\\.org/(10\\.[^\\s]+)", identifier, perl = TRUE)
+  if (doi_url[1] != -1) {
+    return(sub(".*doi\\.org/(10\\.[^\\s]+).*", "\\1", identifier))
+  }
+  doi_match <- regexpr("(10\\.[0-9]{4,9}/[^\\s]+)", identifier, perl = TRUE)
+  if (doi_match[1] != -1) {
+    return(sub(".*(10\\.[0-9]{4,9}/[^\\s]+).*", "\\1", identifier))
+  }
+  ""
 }
 
 build_graph <- function(
@@ -358,7 +437,10 @@ ui <- fluidPage(
     ),
     mainPanel(
       verbatimTextOutput("status"),
-      visNetworkOutput("graph", height = "700px")
+      tabsetPanel(
+        tabPanel("Metadata", dataTableOutput("metadata_table")),
+        tabPanel("Graph", visNetworkOutput("graph", height = "700px"))
+      )
     )
   )
 )
@@ -497,7 +579,8 @@ server <- function(input, output, session) {
   observeEvent(input$upload_rds, {
     req(input$upload_rds$datapath)
     loaded <- tryCatch(readRDS(input$upload_rds$datapath), error = function(e) NULL)
-    if (is.null(loaded) || !is.list(loaded)) {
+    loaded <- sanitize_records(loaded)
+    if (length(loaded) == 0) {
       showNotification("Uploaded file is not a valid records list.", type = "error")
       return(NULL)
     }
@@ -539,18 +622,30 @@ server <- function(input, output, session) {
     graph_trigger(graph_trigger() + 1)
   })
 
+  filtered_records <- reactive({
+    payload <- records_val()
+    if (is.null(payload) || is.null(payload$records)) {
+      return(list())
+    }
+    records <- sanitize_records(payload$records)
+    filter_by_keywords(records, input$keywords)
+  })
+
+  table_data <- reactive({
+    records_to_table(filtered_records())
+  })
+
   graph_data <- eventReactive(graph_trigger(), {
     payload <- records_val()
     if (is.null(payload)) {
       return(list(nodes = data.frame(), edges = data.frame(), status = "Fetch metadata first."))
     }
-    records <- payload$records
-    if (is.null(records) || length(records) == 0) {
+    records <- filtered_records()
+    if (length(records) == 0) {
       return(list(nodes = data.frame(), edges = data.frame(), status = payload$status %||% "No records loaded."))
     }
     withProgress(message = "Building graph...", value = 0, {
-      community_ids <- vapply(records, function(rec) as.character(rec$id), character(1))
-      records <- filter_by_keywords(records, input$keywords)
+      community_ids <- vapply(sanitize_records(payload$records), function(rec) as.character(rec$id), character(1))
       rels <- extract_relations(records, community_ids)
       rel_choices <- c("All", rels)
       current <- isolate(input$relations)
@@ -607,6 +702,49 @@ server <- function(input, output, session) {
     data$status %||% "Ready."
   })
 
+  output$metadata_table <- renderDataTable({
+    datatable(
+      table_data(),
+      selection = "single",
+      rownames = FALSE,
+      escape = FALSE,
+      options = list(
+        pageLength = 10,
+        autoWidth = TRUE,
+        columnDefs = list(list(targets = 0, visible = FALSE))
+      ),
+      callback = JS(
+        "Shiny.addCustomMessageHandler('scrollToId', function(id) {",
+        "  if (!id) { return; }",
+        "  var data = table.column(0).data().toArray();",
+        "  var idx = data.indexOf(id.toString());",
+        "  if (idx === -1) { return; }",
+        "  table.row(idx).select();",
+        "  var node = table.row(idx).node();",
+        "  if (node && node.scrollIntoView) { node.scrollIntoView({block: 'center'}); }",
+        "});"
+      )
+    )
+  })
+
+  observeEvent(input$selected_node_id, {
+    proxy <- dataTableProxy("metadata_table")
+    id <- input$selected_node_id
+    if (is.null(id)) {
+      selectRows(proxy, NULL)
+      return(NULL)
+    }
+    rows <- table_data()
+    idx <- which(rows$Id == as.character(id))
+    if (length(idx) == 0) {
+      selectRows(proxy, NULL)
+    } else {
+      selectRows(proxy, idx[1])
+    }
+    session$sendCustomMessage("scrollToId", as.character(id))
+    NULL
+  })
+
   output$graph <- renderVisNetwork({
     data <- graph_data()
     if (nrow(data$nodes) == 0) {
@@ -626,6 +764,14 @@ server <- function(input, output, session) {
             var id = params.nodes[0];
             window.open('https://zenodo.org/record/' + id, '_blank');
           }
+        }",
+        selectNode = "function(params) {
+          if (params.nodes.length > 0) {
+            Shiny.setInputValue('selected_node_id', params.nodes[0], {priority: 'event'});
+          }
+        }",
+        deselectNode = "function(params) {
+          Shiny.setInputValue('selected_node_id', null, {priority: 'event'});
         }"
       ) |>
       visPhysics(stabilization = TRUE)
