@@ -1,8 +1,13 @@
 # Shiny_ZenodMap
 
-Minimal Shiny app to explore Zenodo records as a network graph.
+Source code for a minimal [Shiny app](https://rmkrug.shinyapps.io/shiny_zenodmap/) to explore Zenodo records as a network graph.
 
-## Run
+The app is available on the [shinyapps.io](https://rmkrug.shinyapps.io/shiny_zenodmap/) but can also be run locally. 
+
+# AI Usage disclaimer
+The development of this app was mailnby done by ChatGPT 5.2 (CODEX extension in Positron). There has not been any detailed code review yet.
+
+## Run Locally
 
 ```r
 shiny::runApp()
