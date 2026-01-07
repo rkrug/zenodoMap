@@ -2,6 +2,7 @@ library(shiny)
 library(httr2)
 library(jsonlite)
 library(visNetwork)
+library(shinyFiles)
 
 zenodo_base <- "https://zenodo.org/api/records"
 
@@ -284,6 +285,13 @@ ui <- fluidPage(
       ),
       passwordInput("token", "Zenodo API token (optional, allows size up to 100)", ""),
       actionButton("fetch", "Fetch metadata"),
+      fileInput("upload_rds", "Upload data (RDS)", accept = ".rds"),
+      shinySaveButton(
+        "save_rds",
+        "Save data (RDS)",
+        "Save",
+        filename = paste0("zenodo_records_", Sys.Date(), ".rds")
+      ),
       tags$hr(),
       tags$h4("Graph"),
       selectInput(
@@ -372,7 +380,39 @@ server <- function(input, output, session) {
       pages_fetched <- 0
       total_hits <- "unknown"
       records <- list()
-      while (length(records) < total_limit) {
+      raw <- tryCatch(
+        zenodo_search_auth(
+          query,
+          community = input$community,
+          size = per_page,
+          page = page,
+          token = input$token
+        ),
+        error = function(e) {
+          err <<- conditionMessage(e)
+          resp <- tryCatch(e$resp, error = function(...) NULL)
+          if (!is.null(resp)) {
+            err_detail <<- tryCatch(resp_body_string(resp), error = function(...) NULL)
+          }
+          NULL
+        }
+      )
+      if (!is.null(raw) && !is.null(raw$hits$total)) {
+        total_hits <- raw$hits$total
+      }
+      if (!is.null(raw) && !is.null(raw$hits$hits)) {
+        records <- c(records, raw$hits$hits)
+        pages_fetched <- pages_fetched + 1
+      }
+
+      target_total <- if (is.numeric(total_hits)) {
+        min(total_limit, total_hits)
+      } else {
+        total_limit
+      }
+      max_pages <- ceiling(target_total / per_page)
+      while (length(records) < target_total && page < max_pages) {
+        page <- page + 1
         raw <- tryCatch(
           zenodo_search_auth(
             query,
@@ -390,22 +430,11 @@ server <- function(input, output, session) {
             NULL
           }
         )
-        if (is.null(raw) || is.null(raw$hits$hits)) {
+        if (is.null(raw) || is.null(raw$hits$hits) || length(raw$hits$hits) == 0) {
           break
         }
-        if (pages_fetched == 0 && !is.null(raw$hits$total)) {
-          total_hits <- raw$hits$total
-        }
-        hits <- raw$hits$hits
-        if (length(hits) == 0) {
-          break
-        }
-        records <- c(records, hits)
+        records <- c(records, raw$hits$hits)
         pages_fetched <- pages_fetched + 1
-        if (length(hits) < per_page) {
-          break
-        }
-        page <- page + 1
       }
 
       if (length(records) == 0) {
@@ -465,6 +494,47 @@ server <- function(input, output, session) {
     })
   })
 
+  observeEvent(input$upload_rds, {
+    req(input$upload_rds$datapath)
+    loaded <- tryCatch(readRDS(input$upload_rds$datapath), error = function(e) NULL)
+    if (is.null(loaded) || !is.list(loaded)) {
+      showNotification("Uploaded file is not a valid records list.", type = "error")
+      return(NULL)
+    }
+    records_val(list(
+      records = loaded,
+      status = paste("Loaded records from", input$upload_rds$name),
+      api_url = "local:rds",
+      query = NULL,
+      per_page = NA,
+      total_limit = length(loaded),
+      pages_fetched = NA,
+      total_hits = length(loaded)
+    ))
+    graph_trigger(graph_trigger() + 1)
+  })
+
+  roots <- c(Home = normalizePath("~"), shinyFiles::getVolumes()())
+  shinyFileSave(input, "save_rds", roots = roots, session = session)
+
+  observeEvent(input$save_rds, {
+    fileinfo <- parseSavePath(roots, input$save_rds)
+    if (nrow(fileinfo) == 0) {
+      return(NULL)
+    }
+    payload <- records_val()
+    if (is.null(payload) || is.null(payload$records)) {
+      showNotification("No records loaded. Click 'Fetch metadata' first.", type = "error")
+      return(NULL)
+    }
+    path <- fileinfo$datapath
+    if (!grepl("\\.rds$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".rds")
+    }
+    saveRDS(payload$records, file = path)
+    showNotification(paste("Saved to", path), type = "message")
+  })
+
   observeEvent(input$refresh_graph, {
     graph_trigger(graph_trigger() + 1)
   })
@@ -479,8 +549,8 @@ server <- function(input, output, session) {
       return(list(nodes = data.frame(), edges = data.frame(), status = payload$status %||% "No records loaded."))
     }
     withProgress(message = "Building graph...", value = 0, {
-      records <- filter_by_keywords(records, input$keywords)
       community_ids <- vapply(records, function(rec) as.character(rec$id), character(1))
+      records <- filter_by_keywords(records, input$keywords)
       rels <- extract_relations(records, community_ids)
       rel_choices <- c("All", rels)
       current <- isolate(input$relations)
@@ -522,9 +592,9 @@ server <- function(input, output, session) {
         "| Records used:",
         length(records),
         "| Page size:",
-        payload$per_page,
+        payload$per_page %||% "n/a",
         "| Pages:",
-        payload$pages_fetched,
+        payload$pages_fetched %||% "n/a",
         "\nAPI:",
         payload$api_url
       )
