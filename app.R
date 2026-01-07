@@ -172,7 +172,29 @@ records_to_table <- function(records) {
   do.call(rbind, rows)
 }
 
-extract_relations <- function(records, community_ids = NULL) {
+build_concept_map <- function(records) {
+  map <- list()
+  times <- list()
+  for (rec in records) {
+    cid <- rec$conceptrecid %||% zenodo_id_from_identifier(rec$metadata$conceptdoi %||% "")
+    if (is.null(cid) || cid == "") {
+      next
+    }
+    cid <- as.character(cid)
+    stamp <- rec$updated %||% rec$created %||% rec$metadata$publication_date %||% ""
+    ts <- suppressWarnings(as.numeric(as.POSIXct(stamp, tz = "UTC")))
+    if (is.na(ts)) {
+      ts <- 0
+    }
+    if (is.null(times[[cid]]) || ts >= times[[cid]]) {
+      map[[cid]] <- as.character(rec$id)
+      times[[cid]] <- ts
+    }
+  }
+  map
+}
+
+extract_relations <- function(records, community_ids = NULL, concept_map = NULL) {
   relations <- unique(unlist(lapply(records, function(rec) {
     related <- rec$metadata$related_identifiers
     if (is.null(related) || length(related) == 0) {
@@ -182,6 +204,9 @@ extract_relations <- function(records, community_ids = NULL) {
       rel <- ri$relation %||% ""
       ident <- ri$identifier %||% ""
       zenodo_id <- zenodo_id_from_identifier(ident)
+      if (!is.null(concept_map) && !is.na(zenodo_id) && zenodo_id %in% names(concept_map)) {
+        zenodo_id <- concept_map[[zenodo_id]]
+      }
       if (!is.null(community_ids) && (is.na(zenodo_id) || !(zenodo_id %in% community_ids))) {
         return("")
       }
@@ -215,7 +240,8 @@ build_graph <- function(
   allowed_relations = NULL,
   community_ids = NULL,
   community_only = FALSE,
-  title_map = NULL
+  title_map = NULL,
+  concept_map = NULL
 ) {
   nodes <- list()
   edges <- list()
@@ -282,6 +308,9 @@ build_graph <- function(
         next
       }
       zenodo_id <- zenodo_id_from_identifier(ident)
+      if (!is.null(concept_map) && !is.na(zenodo_id) && zenodo_id %in% names(concept_map)) {
+        zenodo_id <- concept_map[[zenodo_id]]
+      }
       if (!is.na(zenodo_id)) {
         if (!is.null(community_ids) && community_only && !(zenodo_id %in% community_ids)) {
           next
@@ -645,8 +674,10 @@ server <- function(input, output, session) {
       return(list(nodes = data.frame(), edges = data.frame(), status = payload$status %||% "No records loaded."))
     }
     withProgress(message = "Building graph...", value = 0, {
-      community_ids <- vapply(sanitize_records(payload$records), function(rec) as.character(rec$id), character(1))
-      rels <- extract_relations(records, community_ids)
+      base_records <- sanitize_records(payload$records)
+      community_ids <- vapply(base_records, function(rec) as.character(rec$id), character(1))
+      concept_map <- build_concept_map(base_records)
+      rels <- extract_relations(records, community_ids, concept_map)
       rel_choices <- c("All", rels)
       current <- isolate(input$relations)
       if (is.null(current) || length(current) == 0) {
@@ -675,7 +706,8 @@ server <- function(input, output, session) {
         allowed_relations = input$relations,
         community_ids = community_ids,
         community_only = isTRUE(input$community_only),
-        title_map = title_map
+        title_map = title_map,
+        concept_map = concept_map
       )
       total <- payload$total_hits %||% length(records)
       graph$status <- paste(
