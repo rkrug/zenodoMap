@@ -108,11 +108,33 @@ filter_by_keywords <- function(records, keywords_text) {
   records[keep]
 }
 
+extract_relations <- function(records, community_ids = NULL) {
+  relations <- unique(unlist(lapply(records, function(rec) {
+    related <- rec$metadata$related_identifiers
+    if (is.null(related) || length(related) == 0) {
+      return(character(0))
+    }
+    rels <- vapply(related, function(ri) {
+      rel <- ri$relation %||% ""
+      ident <- ri$identifier %||% ""
+      zenodo_id <- zenodo_id_from_identifier(ident)
+      if (!is.null(community_ids) && (is.na(zenodo_id) || !(zenodo_id %in% community_ids))) {
+        return("")
+      }
+      rel
+    }, character(1))
+    rels[rels != ""]
+  })))
+  sort(relations)
+}
+
 build_graph <- function(
   records,
   depth = 0,
   max_expand = 300,
-  allowed_relations = NULL
+  allowed_relations = NULL,
+  community_ids = NULL,
+  community_only = FALSE
 ) {
   nodes <- list()
   edges <- list()
@@ -121,6 +143,13 @@ build_graph <- function(
   relation_filter <- tolower(allowed_relations %||% character(0))
   allow_all_relations <- length(relation_filter) == 0 ||
     "all" %in% relation_filter
+  node_group <- function(id) {
+    if (!is.null(community_ids) && id %in% community_ids) {
+      "community"
+    } else {
+      "external"
+    }
+  }
 
   add_node <- function(id, label, group, title = NULL) {
     if (id %in% seen_nodes) {
@@ -148,8 +177,12 @@ build_graph <- function(
 
   process_record <- function(rec) {
     rid <- as.character(rec$id)
+    is_community <- !is.null(community_ids) && rid %in% community_ids
+    if (community_only && !is_community) {
+      return(character(0))
+    }
     title <- rec$metadata$title %||% paste("Record", rid)
-    add_node(rid, title, "record", title)
+    add_node(rid, title, node_group(rid), title)
 
     related <- rec$metadata$related_identifiers
     if (is.null(related) || length(related) == 0) {
@@ -165,12 +198,14 @@ build_graph <- function(
       }
       zenodo_id <- zenodo_id_from_identifier(ident)
       if (!is.na(zenodo_id)) {
+        if (!is.null(community_ids) && community_only && !(zenodo_id %in% community_ids)) {
+          next
+        }
         target <- as.character(zenodo_id)
-        add_node(target, paste("Zenodo", target), "record")
+        add_node(target, paste("Zenodo", target), node_group(target))
         zenodo_ids <- unique(c(zenodo_ids, target))
       } else {
-        target <- paste0("ext:", ident)
-        add_node(target, ident, "related")
+        next
       }
       add_edge(rid, target, rel)
     }
@@ -232,9 +267,9 @@ ui <- fluidPage(
       numericInput(
         "max_records",
         "Max records (initial search)",
-        25,
+        100,
         min = 5,
-        max = 25,
+        max = 1000,
         step = 5
       ),
       passwordInput("token", "Zenodo API token (optional, allows size up to 100)", ""),
@@ -246,6 +281,11 @@ ui <- fluidPage(
         "Expansion depth",
         choices = c("0" = 0, "1" = 1, "2" = 2),
         selected = 1
+      ),
+      checkboxInput(
+        "community_only",
+        "Only community-to-community links",
+        FALSE
       ),
       selectizeInput(
         "relations",
@@ -312,30 +352,53 @@ server <- function(input, output, session) {
   observeEvent(input$fetch, {
     query <- build_query(input$query)
     req(input$community)
-    size_limit <- if (is.null(input$token) || input$token == "") 25 else 100
-    size <- min(input$max_records, size_limit)
-    api_url <- build_api_url(query, input$community, size, 1)
+    per_page <- if (is.null(input$token) || input$token == "") 25 else 100
+    total_limit <- max(1, input$max_records)
+    api_url <- build_api_url(query, input$community, per_page, 1)
     withProgress(message = "Fetching Zenodo records...", value = 0, {
       err <- NULL
       err_detail <- NULL
-      raw <- tryCatch(
-        zenodo_search_auth(
-          query,
-          community = input$community,
-          size = size,
-          page = 1,
-          token = input$token
-        ),
-        error = function(e) {
-          err <<- conditionMessage(e)
-          resp <- tryCatch(e$resp, error = function(...) NULL)
-          if (!is.null(resp)) {
-            err_detail <<- tryCatch(resp_body_string(resp), error = function(...) NULL)
+      page <- 1
+      pages_fetched <- 0
+      total_hits <- "unknown"
+      records <- list()
+      while (length(records) < total_limit) {
+        raw <- tryCatch(
+          zenodo_search_auth(
+            query,
+            community = input$community,
+            size = per_page,
+            page = page,
+            token = input$token
+          ),
+          error = function(e) {
+            err <<- conditionMessage(e)
+            resp <- tryCatch(e$resp, error = function(...) NULL)
+            if (!is.null(resp)) {
+              err_detail <<- tryCatch(resp_body_string(resp), error = function(...) NULL)
+            }
+            NULL
           }
-          NULL
+        )
+        if (is.null(raw) || is.null(raw$hits$hits)) {
+          break
         }
-      )
-      if (is.null(raw) || is.null(raw$hits$hits)) {
+        if (pages_fetched == 0 && !is.null(raw$hits$total)) {
+          total_hits <- raw$hits$total
+        }
+        hits <- raw$hits$hits
+        if (length(hits) == 0) {
+          break
+        }
+        records <- c(records, hits)
+        pages_fetched <- pages_fetched + 1
+        if (length(hits) < per_page) {
+          break
+        }
+        page <- page + 1
+      }
+
+      if (length(records) == 0) {
         msg <- if (!is.null(err)) {
           detail <- if (!is.null(err_detail) && err_detail != "") {
             paste0(" | Response: ", err_detail)
@@ -351,12 +414,17 @@ server <- function(input, output, session) {
           status = paste(msg, api_url),
           api_url = api_url,
           query = query,
-          size = size
+          per_page = per_page,
+          total_limit = total_limit,
+          pages_fetched = pages_fetched,
+          total_hits = total_hits
         ))
         return(NULL)
       }
 
-      records <- raw$hits$hits
+      if (length(records) > total_limit) {
+        records <- records[seq_len(total_limit)]
+      }
       all_keywords <- sort(unique(unlist(lapply(records, function(rec) {
         kws <- rec$metadata$keywords
         if (is.null(kws)) {
@@ -377,7 +445,10 @@ server <- function(input, output, session) {
         status = NULL,
         api_url = api_url,
         query = query,
-        size = size
+        per_page = per_page,
+        total_limit = total_limit,
+        pages_fetched = pages_fetched,
+        total_hits = total_hits
       ))
       graph_trigger(graph_trigger() + 1)
       NULL
@@ -399,14 +470,34 @@ server <- function(input, output, session) {
     }
     withProgress(message = "Building graph...", value = 0, {
       records <- filter_by_keywords(records, input$keywords)
+      community_ids <- vapply(records, function(rec) as.character(rec$id), character(1))
+      rels <- extract_relations(records, community_ids)
+      rel_choices <- c("All", rels)
+      current <- isolate(input$relations)
+      if (is.null(current) || length(current) == 0) {
+        current <- "All"
+      }
+      current <- current[current %in% rel_choices]
+      if (length(current) == 0) {
+        current <- "All"
+      }
+      updateSelectizeInput(
+        session,
+        "relations",
+        choices = rel_choices,
+        selected = current,
+        server = TRUE
+      )
       incProgress(0.6, detail = "Building graph")
       graph <- build_graph(
         records,
         depth = as.integer(input$depth),
-        max_expand = payload$size,
-        allowed_relations = input$relations
+        max_expand = length(records),
+        allowed_relations = input$relations,
+        community_ids = community_ids,
+        community_only = isTRUE(input$community_only)
       )
-      total <- length(records)
+      total <- payload$total_hits %||% length(records)
       graph$status <- paste(
         "Query:",
         paste0("communities=", input$community),
@@ -416,7 +507,9 @@ server <- function(input, output, session) {
         "| Records used:",
         length(records),
         "| Page size:",
-        payload$size,
+        payload$per_page,
+        "| Pages:",
+        payload$pages_fetched,
         "\nAPI:",
         payload$api_url
       )
@@ -435,6 +528,9 @@ server <- function(input, output, session) {
       return(visNetwork(data.frame(id = 1, label = "No results"), data.frame()))
     }
     visNetwork(data$nodes, data$edges) |>
+      visGroups(groupname = "community", color = list(background = "#2B6CB0", border = "#1A4F7A")) |>
+      visGroups(groupname = "external", color = list(background = "#DD6B20", border = "#B44C11")) |>
+      visLegend(useGroups = TRUE, position = "right") |>
       visOptions(
         highlightNearest = TRUE,
         nodesIdSelection = list(enabled = TRUE, useLabels = TRUE)

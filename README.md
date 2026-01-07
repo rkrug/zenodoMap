@@ -20,6 +20,7 @@ shiny::runApp()
 
 - Default community id is `ipbes` (IPBES community). You can add extra query terms.
 - Expansion depth is selectable (0-2). Expansion follows Zenodo DOIs only and is capped for performance.
-- Zenodo limits unauthenticated page size to 25; add a token to raise it to 100.
+- Zenodo limits unauthenticated page size to 25; add a token to raise it to 100 per page.
 - Keyword filter is populated from record keywords and supports multi-select.
 - Relation type filter is optional; select "All" to include every relation.
+- Nodes are colored by community vs external deposits; enable "Only community-to-community links" to hide external nodes/edges.
