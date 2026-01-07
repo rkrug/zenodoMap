@@ -26,6 +26,9 @@ shiny::runApp()
 - Relation type filter is optional; select "All" to include every relation.
 - Nodes are colored by community vs external deposits; enable "Only community-to-community links" to hide external nodes/edges.
 - Use "Save data (RDS)" to choose a save location for fetched metadata (requires `shinyFiles`).
+- Metadata table uses the `DT` package.
+- DOI columns in the table are clickable; related items include the relation label.
+- Concept DOIs in relations are mapped to the latest version found in the fetched records.
 
 ## Fetch flow
 

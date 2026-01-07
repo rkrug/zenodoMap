@@ -378,29 +378,58 @@ build_query <- function(query_text) {
 
 ui <- fluidPage(
   titlePanel("Zenodo Network Explorer"),
+  tags$style(HTML("
+    .data-tabs .tab-content {
+      min-height: 330px;
+      height: 330px;
+      overflow-y: auto;
+    }
+    .sidebar-separator {
+      border: 0;
+      height: 2px;
+      background: #b5b5b5;
+      margin: 12px 0;
+    }
+  ")),
   sidebarLayout(
     sidebarPanel(
       tags$h4("Data"),
-      textInput("community", "Community id", "ipbes"),
-      textInput("query", "Additional query (optional)", ""),
-      numericInput(
-        "max_records",
-        "Max records (initial search)",
-        100,
-        min = 5,
-        max = 1000,
-        step = 5
+      div(
+        class = "data-tabs",
+        tabsetPanel(
+          tabPanel(
+            "Fetch",
+            textInput("community", "Community id", "ipbes"),
+          textInput("query", "Additional query (optional)", ""),
+          numericInput(
+            "max_records",
+            "Max records (initial search)",
+            100,
+            min = 5,
+            max = 1000,
+            step = 5
+          ),
+          passwordInput("token", "Zenodo API token (optional, allows size up to 100)", ""),
+          fluidRow(
+            column(6, actionButton("fetch", "Fetch metadata")),
+            column(
+              6,
+              shinySaveButton(
+                "save_rds",
+                "Save data (RDS)",
+                "Save",
+                filename = paste0("zenodo_records_", Sys.Date(), ".rds")
+              )
+            )
+            )
+          ),
+          tabPanel(
+            "Upload",
+            fileInput("upload_rds", "Upload data (RDS)", accept = ".rds")
+          )
+        )
       ),
-      passwordInput("token", "Zenodo API token (optional, allows size up to 100)", ""),
-      actionButton("fetch", "Fetch metadata"),
-      fileInput("upload_rds", "Upload data (RDS)", accept = ".rds"),
-      shinySaveButton(
-        "save_rds",
-        "Save data (RDS)",
-        "Save",
-        filename = paste0("zenodo_records_", Sys.Date(), ".rds")
-      ),
-      tags$hr(),
+      tags$hr(class = "sidebar-separator"),
       tags$h4("Graph"),
       selectInput(
         "depth",
