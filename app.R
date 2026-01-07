@@ -134,7 +134,8 @@ build_graph <- function(
   max_expand = 300,
   allowed_relations = NULL,
   community_ids = NULL,
-  community_only = FALSE
+  community_only = FALSE,
+  title_map = NULL
 ) {
   nodes <- list()
   edges <- list()
@@ -181,7 +182,11 @@ build_graph <- function(
     if (community_only && !is_community) {
       return(character(0))
     }
-    title <- rec$metadata$title %||% paste("Record", rid)
+    title <- if (!is.null(title_map) && rid %in% names(title_map)) {
+      title_map[[rid]]
+    } else {
+      rec$metadata$title %||% paste("Record", rid)
+    }
     add_node(rid, title, node_group(rid), title)
 
     related <- rec$metadata$related_identifiers
@@ -202,7 +207,12 @@ build_graph <- function(
           next
         }
         target <- as.character(zenodo_id)
-        add_node(target, paste("Zenodo", target), node_group(target))
+        target_title <- if (!is.null(title_map) && target %in% names(title_map)) {
+          title_map[[target]]
+        } else {
+          paste("Zenodo", target)
+        }
+        add_node(target, target_title, node_group(target), target_title)
         zenodo_ids <- unique(c(zenodo_ids, target))
       } else {
         next
@@ -489,13 +499,18 @@ server <- function(input, output, session) {
         server = TRUE
       )
       incProgress(0.6, detail = "Building graph")
+      title_map <- vapply(records, function(rec) {
+        rec$metadata$title %||% paste("Record", rec$id)
+      }, character(1))
+      names(title_map) <- vapply(records, function(rec) as.character(rec$id), character(1))
       graph <- build_graph(
         records,
         depth = as.integer(input$depth),
         max_expand = length(records),
         allowed_relations = input$relations,
         community_ids = community_ids,
-        community_only = isTRUE(input$community_only)
+        community_only = isTRUE(input$community_only),
+        title_map = title_map
       )
       total <- payload$total_hits %||% length(records)
       graph$status <- paste(
@@ -534,6 +549,14 @@ server <- function(input, output, session) {
       visOptions(
         highlightNearest = TRUE,
         nodesIdSelection = list(enabled = TRUE, useLabels = TRUE)
+      ) |>
+      visEvents(
+        doubleClick = "function(params) {
+          if (params.nodes.length > 0) {
+            var id = params.nodes[0];
+            window.open('https://zenodo.org/record/' + id, '_blank');
+          }
+        }"
       ) |>
       visPhysics(stabilization = TRUE)
   })
