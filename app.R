@@ -7,6 +7,13 @@ library(DT)
 
 zenodo_base <- "https://zenodo.org/api/records"
 
+#' Build a Zenodo records API URL
+#'
+#' @param query Optional search query string.
+#' @param community Optional community id.
+#' @param size Page size for the request.
+#' @param page Page number for the request.
+#' @return A fully-qualified URL string.
 build_api_url <- function(query, community, size, page) {
   params <- list(q = query, communities = community, size = size, page = page)
   params <- params[
@@ -26,6 +33,13 @@ build_api_url <- function(query, community, size, page) {
   paste0(zenodo_base, "?", paste(encoded, collapse = "&"))
 }
 
+#' Search Zenodo records (unauthenticated)
+#'
+#' @param query Optional search query string.
+#' @param community Optional community id.
+#' @param size Page size for the request.
+#' @param page Page number for the request.
+#' @return A list parsed from the Zenodo JSON response.
 zenodo_search <- function(query, community = NULL, size = 200, page = 1) {
   params <- list(communities = community, size = size, page = page)
   if (!is.null(query) && query != "") {
@@ -41,6 +55,14 @@ zenodo_search <- function(query, community = NULL, size = 200, page = 1) {
   resp_body_json(resp, simplifyVector = FALSE)
 }
 
+#' Search Zenodo records (authenticated)
+#'
+#' @param query Optional search query string.
+#' @param community Optional community id.
+#' @param size Page size for the request.
+#' @param page Page number for the request.
+#' @param token Zenodo API token.
+#' @return A list parsed from the Zenodo JSON response.
 zenodo_search_auth <- function(query, community = NULL, size = 200, page = 1, token = NULL) {
   params <- list(communities = community, size = size, page = page)
   if (!is.null(query) && query != "") {
@@ -59,16 +81,28 @@ zenodo_search_auth <- function(query, community = NULL, size = 200, page = 1, to
   resp_body_json(resp, simplifyVector = FALSE)
 }
 
+#' Fetch a single Zenodo record by id
+#'
+#' @param record_id Zenodo record id.
+#' @return A list parsed from the Zenodo JSON response.
 zenodo_fetch_record <- function(record_id) {
   req <- request(paste0(zenodo_base, "/", record_id))
   resp <- req_perform(req)
   resp_body_json(resp, simplifyVector = FALSE)
 }
 
+#' Check if an identifier is a Zenodo DOI
+#'
+#' @param identifier Identifier string.
+#' @return Logical scalar.
 is_zenodo_doi <- function(identifier) {
   grepl("^10\\.5281/zenodo\\.\\d+$", tolower(identifier))
 }
 
+#' Extract a Zenodo record id from DOI or record URL
+#'
+#' @param identifier Identifier string.
+#' @return Record id as character or NA if not found.
 zenodo_id_from_identifier <- function(identifier) {
   if (!is_zenodo_doi(identifier)) {
     return(NA_character_)
@@ -76,10 +110,19 @@ zenodo_id_from_identifier <- function(identifier) {
   sub("^10\\.5281/zenodo\\.", "", tolower(identifier))
 }
 
+#' Normalize keywords for matching
+#'
+#' @param x Character vector.
+#' @return Normalized character vector.
 normalize_keywords <- function(x) {
   tolower(trimws(x))
 }
 
+#' Filter records by keyword tokens
+#'
+#' @param records List of Zenodo records.
+#' @param keywords_text Vector or string of keywords.
+#' @return Filtered list of records.
 filter_by_keywords <- function(records, keywords_text) {
   if (is.null(keywords_text) || length(keywords_text) == 0) {
     return(records)
@@ -110,10 +153,18 @@ filter_by_keywords <- function(records, keywords_text) {
   records[keep]
 }
 
+#' Validate a record object
+#'
+#' @param rec Record candidate.
+#' @return Logical scalar.
 is_valid_record <- function(rec) {
   is.list(rec) && !is.null(rec$id) && !is.null(rec$metadata)
 }
 
+#' Normalize records to a list of record objects
+#'
+#' @param records List or data.frame.
+#' @return List of records.
 normalize_records <- function(records) {
   if (is.data.frame(records)) {
     return(split(records, seq_len(nrow(records))))
@@ -124,11 +175,19 @@ normalize_records <- function(records) {
   list()
 }
 
+#' Sanitize records by normalizing and filtering invalid entries
+#'
+#' @param records List or data.frame.
+#' @return List of valid records.
 sanitize_records <- function(records) {
   records <- normalize_records(records)
   Filter(is_valid_record, records)
 }
 
+#' Build a metadata table for display
+#'
+#' @param records List of Zenodo records.
+#' @return Data frame with display columns.
 records_to_table <- function(records) {
   if (is.null(records) || length(records) == 0) {
     return(data.frame(
@@ -172,6 +231,10 @@ records_to_table <- function(records) {
   do.call(rbind, rows)
 }
 
+#' Map concept ids to the latest version record id
+#'
+#' @param records List of Zenodo records.
+#' @return Named list mapping concept id to record id.
 build_concept_map <- function(records) {
   map <- list()
   times <- list()
@@ -194,6 +257,12 @@ build_concept_map <- function(records) {
   map
 }
 
+#' Extract relation types present between community records
+#'
+#' @param records List of Zenodo records.
+#' @param community_ids Character vector of community record ids.
+#' @param concept_map Optional map of concept id to record id.
+#' @return Character vector of relation labels.
 extract_relations <- function(records, community_ids = NULL, concept_map = NULL) {
   relations <- unique(unlist(lapply(records, function(rec) {
     related <- rec$metadata$related_identifiers
@@ -217,6 +286,10 @@ extract_relations <- function(records, community_ids = NULL, concept_map = NULL)
   sort(relations)
 }
 
+#' Extract a DOI from identifier text
+#'
+#' @param identifier Identifier string.
+#' @return DOI string or empty string.
 extract_doi <- function(identifier) {
   identifier <- tolower(trimws(identifier))
   if (identifier == "") {
@@ -233,6 +306,17 @@ extract_doi <- function(identifier) {
   ""
 }
 
+#' Build nodes and edges for the network graph
+#'
+#' @param records List of Zenodo records.
+#' @param depth Expansion depth for related Zenodo records.
+#' @param max_expand Maximum records to expand into.
+#' @param allowed_relations Relation filter vector.
+#' @param community_ids Community record ids.
+#' @param community_only Logical; keep only community-to-community links.
+#' @param title_map Optional id to title map.
+#' @param concept_map Optional concept id to record id map.
+#' @return List with `nodes` and `edges` data frames.
 build_graph <- function(
   records,
   depth = 0,
@@ -369,8 +453,17 @@ build_graph <- function(
   )
 }
 
+#' Provide a default for NULL or empty values
+#'
+#' @param a Candidate value.
+#' @param b Default value.
+#' @return `a` if present, otherwise `b`.
 `%||%` <- function(a, b) if (is.null(a) || length(a) == 0) b else a
 
+#' Build a Zenodo query string
+#'
+#' @param query_text User-provided query.
+#' @return Query string or NULL.
 build_query <- function(query_text) {
   query_text <- trimws(query_text)
   if (query_text == "") NULL else query_text
