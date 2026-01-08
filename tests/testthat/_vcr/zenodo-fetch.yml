@@ -14,14 +14,14 @@ http_interactions:
         data: ''unsafe-inline'' ''unsafe-eval'' blob: zenodo-broker.web.cern.ch zenodo-broker-qa.web.cern.ch
         maxcdn.bootstrapcdn.com cdnjs.cloudflare.com ajax.googleapis.com webanalytics.web.cern.ch'
       content-type: application/json
-      date: Thu, 08 Jan 2026 14:36:01 GMT
+      date: Thu, 08 Jan 2026 15:04:53 GMT
       etag: W/"4"
       link: <https://zenodo.org/api/records/13850346> ; rel="linkset" ; type="application/linkset+json"
       permissions-policy: interest-cohort=()
       referrer-policy: strict-origin-when-cross-origin
-      retry-after: '60'
+      retry-after: '59'
       server: nginx
-      set-cookie: 5569e5a730cade8ff2b54f1e815f3670=2fdea293052791cbd4b907b30cb5cb8d;
+      set-cookie: 5569e5a730cade8ff2b54f1e815f3670=f69acdc694a9e73276799a8a52fdd67f;
         path=/; HttpOnly; Secure; SameSite=None
       strict-transport-security:
       - max-age=31556926; includeSubDomains
@@ -32,8 +32,8 @@ http_interactions:
       x-frame-options: sameorigin
       x-ratelimit-limit: '133'
       x-ratelimit-remaining: '132'
-      x-ratelimit-reset: '1767883022'
-      x-request-id: f5016d6c5b5ce4703ed02bdb1f34fc4b
+      x-ratelimit-reset: '1767884753'
+      x-request-id: e245524b36172890366078a98253a371
       x-xss-protection: 1; mode=block
     body:
       string: '{"created": "2026-01-07T11:22:38.146206+00:00", "modified": "2026-01-07T11:22:38.402673+00:00",
@@ -126,5 +126,5 @@ http_interactions:
         "stats": {"downloads": 5, "unique_downloads": 5, "views": 0, "unique_views":
         0, "version_downloads": 5, "version_unique_downloads": 5, "version_unique_views":
         0, "version_views": 0}, "state": "done", "submitted": true}'
-  recorded_at: 2026-01-08 14:36:01
+  recorded_at: 2026-01-08 15:04:53
 recorded_with: VCR-vcr/2.0.0

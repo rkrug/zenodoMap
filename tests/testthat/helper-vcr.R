@@ -16,7 +16,10 @@ record_vcr_cassettes <- function() {
   if (dir.exists(cassette_dir)) {
     unlink(list.files(cassette_dir, full.names = TRUE))
   }
-  vcr::vcr_configure(dir = cassette_dir)
+  vcr::vcr_configure(
+    dir = cassette_dir,
+    match_requests_on = c("uri")
+  )
 
   vcr::use_cassette("zenodo-search", {
     zenodo_search(query = "", community = "ipbes", size = 1, page = 1)
@@ -27,7 +30,7 @@ record_vcr_cassettes <- function() {
     zenodo_search(query = "", community = "ipbes", size = 25, page = 2)
   })
 
-  vcr::use_cassette("zenodo-fetch", {
+  vcr::use_cassette("zenodo-fetch", match_requests_on = c("uri"), {
     fixture <- file.path("tests", "testthat", "fixtures", "zenodo_records_2026-01-07.rds")
     if (!file.exists(fixture)) {
       stop("Fixture not found: ", fixture)
