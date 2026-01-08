@@ -1,5 +1,9 @@
 # zenodoMap
 
+<!-- badges: start -->
+[![Codecov test coverage](https://codecov.io/gh/rkrug/zenodoMap/graph/badge.svg)](https://app.codecov.io/gh/rkrug/zenodoMap)
+<!-- badges: end -->
+
 Source code for a minimal [Shiny app](https://rmkrug.shinyapps.io/shiny_zenodmap/) to explore Zenodo records as a network graph.
 
 The app is available on the [shinyapps.io](https://rmkrug.shinyapps.io/shiny_zenodmap/) but can also be run locally. 
