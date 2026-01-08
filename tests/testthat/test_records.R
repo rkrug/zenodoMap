@@ -19,3 +19,14 @@ test_that("keyword filter reduces records", {
   expect_true(length(filtered) <= length(records))
 })
 
+test_that("records_to_table returns expected columns", {
+  path <- testthat::test_path("fixtures", "zenodo_records_2026-01-07.rds")
+  records <- sanitize_records(readRDS(path))
+  tbl <- records_to_table(records)
+
+  expect_true(all(c("Id", "Title", "DOI", "Related") %in% names(tbl)))
+  expect_true(nrow(tbl) == length(records))
+  expect_type(tbl$Id, "character")
+  expect_type(tbl$Title, "character")
+})
+

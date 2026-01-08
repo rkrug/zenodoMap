@@ -1,13 +1,11 @@
 ^rsconnect$
 ^docs$
+^doc$
 ^flowchart\.mermaid$
-^.*\.rds$
 ^\.vscode$
-^docs$
 ^vignettes/\.quarto$
 ^vignettes/*_files$
-^.rscignore
-^doc$
+^\.rscignore$
 ^Meta$
 ^_pkgdown\.yml$
 ^pkgdown$

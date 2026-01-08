@@ -1,6 +1,8 @@
 Package: zenodoMap
 Title: Zenodo Network Explorer
 Version: 0.1.0
+Depends:
+    R (>= 4.1.0)
 Authors@R: person("Rainer M", "Krug",
     email = "rainer.krug@sib.swiss",
     role = c("aut", "cre"),
@@ -23,7 +25,9 @@ Imports:
 Suggests:
     knitr,
     quarto,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    vcr,
+    webmockr
 VignetteBuilder: quarto
 RoxygenNote: 7.3.3
 Config/testthat/edition: 3
