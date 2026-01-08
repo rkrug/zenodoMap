@@ -22,6 +22,8 @@ Imports:
     DT
 Suggests:
     knitr,
-    quarto
+    quarto,
+    testthat (>= 3.0.0)
 VignetteBuilder: quarto
 RoxygenNote: 7.3.3
+Config/testthat/edition: 3
