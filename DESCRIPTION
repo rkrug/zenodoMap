@@ -10,8 +10,8 @@ Description: Shiny application and supporting utilities to fetch Zenodo records,
     filter them by keywords and relations, and render a network graph and metadata
     table for exploration.
 License: MIT + file LICENSE
-URL: https://github.com/rkrug/Shiny_ZenodMap
-BugReports: https://github.com/rkrug/Shiny_ZenodMap/issues
+URL: https://github.com/rkrug/zenodoMap, https://rkrug.github.io/zenodoMap/
+BugReports: https://github.com/rkrug/zenodoMap/issues
 Encoding: UTF-8
 LazyData: true
 Imports:
