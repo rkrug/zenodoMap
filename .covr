@@ -1,0 +1,4 @@
+exclusions: [
+  "R/ui.R",
+  "R/server.R"
+]

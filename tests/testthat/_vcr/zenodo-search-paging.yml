@@ -13,12 +13,12 @@ http_interactions:
         data: ''unsafe-inline'' ''unsafe-eval'' blob: zenodo-broker.web.cern.ch zenodo-broker-qa.web.cern.ch
         maxcdn.bootstrapcdn.com cdnjs.cloudflare.com ajax.googleapis.com webanalytics.web.cern.ch'
       content-type: application/json
-      date: Thu, 08 Jan 2026 13:44:55 GMT
+      date: Thu, 08 Jan 2026 14:35:56 GMT
       permissions-policy: interest-cohort=()
       referrer-policy: strict-origin-when-cross-origin
-      retry-after: '53'
+      retry-after: '56'
       server: nginx
-      set-cookie: 5569e5a730cade8ff2b54f1e815f3670=e7d183380ca505b01ed6c7f00ca5e366;
+      set-cookie: 5569e5a730cade8ff2b54f1e815f3670=4d240616c4b47670d4fbf9426556318e;
         path=/; HttpOnly; Secure; SameSite=None
       strict-transport-security:
       - max-age=31556926; includeSubDomains
@@ -29,8 +29,8 @@ http_interactions:
       x-frame-options: sameorigin
       x-ratelimit-limit: '30'
       x-ratelimit-remaining: '28'
-      x-ratelimit-reset: '1767879949'
-      x-request-id: f7386e56f6a2c9a3412022d47ced74b9
+      x-ratelimit-reset: '1767883013'
+      x-request-id: 20e65e03aa7b0c0bacb0f3c37836b908
       x-xss-protection: 1; mode=block
     body:
       string: '{"hits": {"hits": [{"created": "2026-01-07T11:22:38.146206+00:00",
@@ -841,9 +841,9 @@ http_interactions:
         NEXUS (CHAPTER 6)_V2.pdf", "size": 7267193, "checksum": "md5:f8a3650d6f3ae1a8bf968345879c3bf0",
         "links": {"self": "https://zenodo.org/api/records/18165262/files/2025 IPBES_ASSESSMENT
         NEXUS (CHAPTER 6)_V2.pdf/content"}}], "swh": null, "owners": [{"id": "1021885"}],
-        "status": "published", "stats": {"downloads": 602, "unique_downloads": 385,
-        "views": 538, "unique_views": 480, "version_downloads": 9, "version_unique_downloads":
-        6, "version_unique_views": 7, "version_views": 8}, "state": "done", "submitted":
+        "status": "published", "stats": {"downloads": 603, "unique_downloads": 386,
+        "views": 539, "unique_views": 481, "version_downloads": 10, "version_unique_downloads":
+        7, "version_unique_views": 8, "version_views": 9}, "state": "done", "submitted":
         true}, {"created": "2026-01-06T17:07:23.043090+00:00", "modified": "2026-01-06T17:07:23.562280+00:00",
         "id": 18165236, "conceptrecid": "13850309", "doi": "10.5281/zenodo.18165236",
         "conceptdoi": "10.5281/zenodo.13850309", "doi_url": "https://doi.org/10.5281/zenodo.18165236",
@@ -1046,8 +1046,8 @@ http_interactions:
         "links": {"self": "https://zenodo.org/api/records/18165236/files/2025 IPBES_ASSESSMENT
         NEXUS (CHAPTER 5_FULL)_V2.pdf/content"}}], "swh": null, "owners": [{"id":
         "1021885"}], "status": "published", "stats": {"downloads": 1388, "unique_downloads":
-        594, "views": 726, "unique_views": 625, "version_downloads": 9, "version_unique_downloads":
-        7, "version_unique_views": 5, "version_views": 5}, "state": "done", "submitted":
+        594, "views": 727, "unique_views": 626, "version_downloads": 9, "version_unique_downloads":
+        7, "version_unique_views": 6, "version_views": 6}, "state": "done", "submitted":
         true}, {"created": "2026-01-06T17:05:09.198714+00:00", "modified": "2026-01-06T17:05:09.501426+00:00",
         "id": 18165218, "conceptrecid": "13850305", "doi": "10.5281/zenodo.18165218",
         "conceptdoi": "10.5281/zenodo.13850305", "doi_url": "https://doi.org/10.5281/zenodo.18165218",
@@ -1807,8 +1807,8 @@ http_interactions:
         report of IPBES assessments with the data and knowledge management policy
         - Transformative Change Assessment.pdf/content"}}], "swh": null, "owners":
         [{"id": "1051226"}], "status": "published", "stats": {"downloads": 18, "unique_downloads":
-        15, "views": 13, "unique_views": 12, "version_downloads": 18, "version_unique_downloads":
-        15, "version_unique_views": 12, "version_views": 13}, "state": "done", "submitted":
+        15, "views": 14, "unique_views": 13, "version_downloads": 18, "version_unique_downloads":
+        15, "version_unique_views": 13, "version_views": 14}, "state": "done", "submitted":
         true}, {"created": "2025-11-04T12:47:53.081379+00:00", "modified": "2025-11-04T12:47:53.468985+00:00",
         "id": 17523196, "conceptrecid": "17523195", "doi": "10.5281/zenodo.17523196",
         "conceptdoi": "10.5281/zenodo.17523195", "doi_url": "https://doi.org/10.5281/zenodo.17523196",
@@ -2800,7 +2800,7 @@ http_interactions:
         "is_selected": false}, {"key": "html", "doc_count": 20, "label": "HTML", "is_selected":
         false}], "label": "File type"}}, "links": {"self": "https://zenodo.org/api/records?communities=ipbes&page=1&size=25&sort=newest",
         "next": "https://zenodo.org/api/records?communities=ipbes&page=2&size=25&sort=newest"}}'
-  recorded_at: 2026-01-08 13:44:55
+  recorded_at: 2026-01-08 14:35:56
 - request:
     method: GET
     uri: https://zenodo.org/api/records?communities=ipbes&size=25&page=2
@@ -2816,12 +2816,12 @@ http_interactions:
         data: ''unsafe-inline'' ''unsafe-eval'' blob: zenodo-broker.web.cern.ch zenodo-broker-qa.web.cern.ch
         maxcdn.bootstrapcdn.com cdnjs.cloudflare.com ajax.googleapis.com webanalytics.web.cern.ch'
       content-type: application/json
-      date: Thu, 08 Jan 2026 13:45:06 GMT
+      date: Thu, 08 Jan 2026 14:36:00 GMT
       permissions-policy: interest-cohort=()
       referrer-policy: strict-origin-when-cross-origin
-      retry-after: '42'
+      retry-after: '52'
       server: nginx
-      set-cookie: 5569e5a730cade8ff2b54f1e815f3670=e7d183380ca505b01ed6c7f00ca5e366;
+      set-cookie: 5569e5a730cade8ff2b54f1e815f3670=8ab5058f0dc55dd3838486b46c05385c;
         path=/; HttpOnly; Secure; SameSite=None
       strict-transport-security:
       - max-age=31556926; includeSubDomains
@@ -2832,8 +2832,8 @@ http_interactions:
       x-frame-options: sameorigin
       x-ratelimit-limit: '30'
       x-ratelimit-remaining: '27'
-      x-ratelimit-reset: '1767879949'
-      x-request-id: 8f6597b8813c4bbd2961a3274f65a7fe
+      x-ratelimit-reset: '1767883013'
+      x-request-id: be6740f205c8fe67bb3134ad0d5d75d5
       x-xss-protection: 1; mode=block
     body:
       string: '{"hits": {"hits": [{"created": "2025-10-13T18:48:25.128910+00:00",
@@ -4921,5 +4921,5 @@ http_interactions:
         false}], "label": "File type"}}, "links": {"prev": "https://zenodo.org/api/records?communities=ipbes&page=1&size=25&sort=newest",
         "self": "https://zenodo.org/api/records?communities=ipbes&page=2&size=25&sort=newest",
         "next": "https://zenodo.org/api/records?communities=ipbes&page=3&size=25&sort=newest"}}'
-  recorded_at: 2026-01-08 13:45:06
+  recorded_at: 2026-01-08 14:36:00
 recorded_with: VCR-vcr/2.0.0

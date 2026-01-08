@@ -26,4 +26,20 @@ record_vcr_cassettes <- function() {
     zenodo_search(query = "", community = "ipbes", size = 25, page = 1)
     zenodo_search(query = "", community = "ipbes", size = 25, page = 2)
   })
+
+  vcr::use_cassette("zenodo-fetch", {
+    fixture <- file.path("tests", "testthat", "fixtures", "zenodo_records_2026-01-07.rds")
+    if (!file.exists(fixture)) {
+      stop("Fixture not found: ", fixture)
+    }
+    records <- readRDS(fixture)
+    if (!is.list(records) || length(records) == 0) {
+      stop("Fixture is empty")
+    }
+    record_id <- as.character(records[[1]]$id)
+    if (is.null(record_id) || record_id == "") {
+      stop("Fixture missing record id")
+    }
+    zenodo_fetch_record(record_id)
+  })
 }

@@ -3,6 +3,7 @@
 <!-- badges: start -->
 [![Codecov test coverage](https://codecov.io/gh/rkrug/zenodoMap/graph/badge.svg)](https://app.codecov.io/gh/rkrug/zenodoMap)
 <!-- badges: end -->
+[![Shiny](https://img.shields.io/badge/Shiny-live-brightgreen)](https://rmkrug.shinyapps.io/shiny_zenodmap/)
 
 Source code for a minimal [Shiny app](https://rmkrug.shinyapps.io/shiny_zenodmap/) to explore Zenodo records as a network graph.
 
