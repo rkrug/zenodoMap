@@ -1,0 +1,27 @@
+Package: zenodoMap
+Title: Zenodo Network Explorer
+Version: 0.1.0
+Authors@R: person("Rainer M", "Krug",
+    email = "rainer.krug@sib.swiss",
+    role = c("aut", "cre"),
+    comment = c(alt_email = "Rainer@krugs.de")
+  )
+Description: Shiny application and supporting utilities to fetch Zenodo records,
+    filter them by keywords and relations, and render a network graph and metadata
+    table for exploration.
+License: MIT + file LICENSE
+URL: https://github.com/rkrug/Shiny_ZenodMap
+BugReports: https://github.com/rkrug/Shiny_ZenodMap/issues
+Encoding: UTF-8
+LazyData: true
+Imports:
+    shiny,
+    httr2,
+    visNetwork,
+    shinyFiles,
+    DT
+Suggests:
+    knitr,
+    quarto
+VignetteBuilder: quarto
+RoxygenNote: 7.3.3

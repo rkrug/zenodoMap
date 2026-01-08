@@ -1,0 +1,11 @@
+^rsconnect$
+^docs$
+^flowchart\.mermaid$
+^.*\.rds$
+^\.vscode$
+^docs$
+^vignettes/\.quarto$
+^vignettes/*_files$
+^.rscignore
+^doc$
+^Meta$

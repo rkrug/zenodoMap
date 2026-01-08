@@ -13,6 +13,14 @@ The development of this app was mailnby done by ChatGPT 5.2 (CODEX extension in 
 shiny::runApp()
 ```
 
+## Package
+
+This project is structured as an R package named `zenodoMap`. You can run the app with:
+
+```r
+zenodoMap::run_app()
+```
+
 ## Notes
 
 ## Usage
