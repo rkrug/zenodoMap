@@ -13,3 +13,4 @@
 ^codecov\.yml$
 ^Makefile$
 ^.covr
+^app.R
