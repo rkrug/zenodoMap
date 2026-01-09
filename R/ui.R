@@ -3,7 +3,7 @@
 #' @importFrom shiny fluidPage titlePanel tags HTML sidebarLayout sidebarPanel
 #' @importFrom shiny mainPanel tabsetPanel tabPanel textInput numericInput
 #' @importFrom shiny passwordInput fluidRow column actionButton selectInput
-#' @importFrom shiny selectizeInput checkboxInput helpText verbatimTextOutput
+#' @importFrom shiny checkboxGroupInput selectizeInput checkboxInput sliderInput numericInput helpText verbatimTextOutput
 #' @importFrom shiny div fileInput
 #' @importFrom shinyFiles shinySaveButton
 #' @importFrom visNetwork visNetworkOutput
@@ -24,7 +24,30 @@ ui <- shiny::fluidPage(
       background: #b5b5b5;
       margin: 12px 0;
     }
+    .relations-disabled {
+      color: #9a9a9a;
+    }
+    #relations .shiny-options-group {
+      column-count: 3;
+      column-gap: 12px;
+    }
   ")),
+  shiny::tags$script(shiny::HTML(
+    "Shiny.addCustomMessageHandler('toggleRelationOptions', function(message) {\n",
+    "  var container = document.getElementById('relations');\n",
+    "  if (!container) { return; }\n",
+    "  var available = message.available || [];\n",
+    "  var inputs = container.querySelectorAll('input[type=checkbox]');\n",
+    "  inputs.forEach(function(input) {\n",
+    "    var wrapper = input.closest('label') || input.parentElement;\n",
+    "    var enabled = available.indexOf(input.value) !== -1;\n",
+    "    input.disabled = !enabled;\n",
+    "    if (wrapper) {\n",
+    "      wrapper.classList.toggle('relations-disabled', !enabled);\n",
+    "    }\n",
+    "  });\n",
+    "});"
+  )),
   shiny::sidebarLayout(
     shiny::sidebarPanel(
       shiny::tags$h4("Data"),
@@ -76,7 +99,7 @@ ui <- shiny::fluidPage(
         "Only community-to-community links",
         FALSE
       ),
-      shiny::selectizeInput(
+      shiny::checkboxGroupInput(
         "relations",
         "Relation types",
         choices = c(
@@ -113,9 +136,7 @@ ui <- shiny::fluidPage(
           "HasMetadata",
           "IsMetadataFor"
         ),
-        selected = "All",
-        multiple = TRUE,
-        options = list(placeholder = "All")
+        selected = "All"
       ),
       shiny::selectizeInput(
         "keywords",
@@ -123,6 +144,27 @@ ui <- shiny::fluidPage(
         choices = NULL,
         multiple = TRUE,
         options = list(placeholder = "Choose keywords")
+      ),
+      shiny::sliderInput(
+        "physics_stabilization",
+        "Physics stabilization (iterations)",
+        min = 0,
+        max = 2000,
+        value = 500,
+        step = 50
+      ),
+      shiny::checkboxInput(
+        "physics_enabled",
+        "Enable physics",
+        TRUE
+      ),
+      shiny::numericInput(
+        "physics_max_time",
+        "Max stabilization time (seconds)",
+        value = 5,
+        min = 0,
+        max = 60,
+        step = 1
       ),
       shiny::actionButton("refresh_graph", "Refresh graph"),
       shiny::helpText("Expansion uses Zenodo DOIs only and is capped for performance.")

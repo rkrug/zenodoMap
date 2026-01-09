@@ -1,7 +1,7 @@
 #' Shiny server logic for the Zenodo network explorer
 #'
 #' @importFrom shiny reactiveVal observeEvent req withProgress updateSelectizeInput
-#' @importFrom shiny showNotification reactive eventReactive renderText isolate incProgress
+#' @importFrom shiny showNotification reactive eventReactive renderText isolate incProgress updateCheckboxGroupInput
 #' @importFrom DT renderDataTable datatable dataTableProxy selectRows JS
 #' @importFrom visNetwork renderVisNetwork visNetwork visGroups visLegend
 #' @importFrom visNetwork visOptions visEvents visPhysics
@@ -150,6 +150,21 @@ server <- function(input, output, session) {
       shiny::showNotification("Uploaded file is not a valid records list.", type = "error")
       return(NULL)
     }
+    all_keywords <- sort(unique(unlist(lapply(loaded, function(rec) {
+      kws <- rec$metadata$keywords
+      if (is.null(kws)) {
+        character(0)
+      } else {
+        trimws(kws)
+      }
+    }))))
+    shiny::updateSelectizeInput(
+      session,
+      "keywords",
+      choices = all_keywords,
+      selected = input$keywords,
+      server = TRUE
+    )
     records_val(list(
       records = loaded,
       status = paste("Loaded records from", input$upload_rds$name),
@@ -215,6 +230,9 @@ server <- function(input, output, session) {
       community_ids <- vapply(base_records, function(rec) as.character(rec$id), character(1))
       concept_map <- build_concept_map(base_records)
       rels <- extract_relations(records, community_ids, concept_map)
+      if (length(rels) == 0) {
+        rels <- extract_relations(records, NULL, concept_map)
+      }
       rel_choices <- c("All", rels)
       current <- shiny::isolate(input$relations)
       if (is.null(current) || length(current) == 0) {
@@ -224,13 +242,13 @@ server <- function(input, output, session) {
       if (length(current) == 0) {
         current <- "All"
       }
-      shiny::updateSelectizeInput(
+      shiny::updateCheckboxGroupInput(
         session,
         "relations",
         choices = rel_choices,
-        selected = current,
-        server = TRUE
+        selected = current
       )
+      session$sendCustomMessage("toggleRelationOptions", list(available = rel_choices))
       shiny::incProgress(0.6, detail = "Building graph")
       title_map <- vapply(records, function(rec) {
         rec$metadata$title %||% paste("Record", rec$id)
@@ -319,6 +337,7 @@ server <- function(input, output, session) {
     if (nrow(data$nodes) == 0) {
       return(visNetwork::visNetwork(data.frame(id = 1, label = "No results"), data.frame()))
     }
+    max_ms <- max(0L, as.integer(input$physics_max_time) * 1000L)
     visNetwork::visNetwork(data$nodes, data$edges) |>
       visNetwork::visGroups(groupname = "community", color = list(background = "#2B6CB0", border = "#1A4F7A")) |>
       visNetwork::visGroups(groupname = "external", color = list(background = "#DD6B20", border = "#B44C11")) |>
@@ -328,21 +347,26 @@ server <- function(input, output, session) {
         nodesIdSelection = list(enabled = TRUE, useLabels = TRUE)
       ) |>
       visNetwork::visEvents(
-        doubleClick = "function(params) {",
-        "  if (params.nodes.length > 0) {",
-        "    var id = params.nodes[0];",
-        "    window.open('https://zenodo.org/record/' + id, '_blank');",
-        "  }",
-        "}",
-        selectNode = "function(params) {",
-        "  if (params.nodes.length > 0) {",
-        "    Shiny.setInputValue('selected_node_id', params.nodes[0], {priority: 'event'});",
-        "  }",
-        "}",
-        deselectNode = "function(params) {",
-        "  Shiny.setInputValue('selected_node_id', null, {priority: 'event'});",
-        "}"
+        doubleClick = "function(params) {\n  if (params.nodes.length > 0) {\n    var id = params.nodes[0];\n    window.open('https://zenodo.org/record/' + id, '_blank');\n  }\n}",
+        selectNode = "function(params) {\n  if (params.nodes.length > 0) {\n    Shiny.setInputValue('selected_node_id', params.nodes[0], {priority: 'event'});\n  }\n}",
+        deselectNode = "function(params) {\n  Shiny.setInputValue('selected_node_id', null, {priority: 'event'});\n}",
+        stabilizationProgress = paste0(
+          "function(params) {",
+          "  if (", max_ms, " <= 0) { return; }",
+          "  if (!this._stopTimer) {",
+          "    var network = this;",
+          "    this._stopTimer = setTimeout(function() {",
+          "      network.stopSimulation();",
+          "      network._stopTimer = null;",
+          "    }, ", max_ms, ");",
+          "  }",
+          "}"
+        ),
+        stabilized = "function(params) {\n  if (this._stopTimer) {\n    clearTimeout(this._stopTimer);\n    this._stopTimer = null;\n  }\n}"
       ) |>
-      visNetwork::visPhysics(stabilization = TRUE)
+      visNetwork::visPhysics(
+        enabled = isTRUE(input$physics_enabled),
+        stabilization = list(iterations = as.integer(input$physics_stabilization))
+      )
   })
 }
