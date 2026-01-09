@@ -13,6 +13,6 @@ render-readme:
 	R -q -e "if (file.exists('README.qmd')) quarto::quarto_render('README.qmd', output_file='README.md')"
 
 deploy:
-	R -q -e "rsconnect::deployApp(appDir='.', appFiles=c('app.R','R','DESCRIPTION','NAMESPACE','inst','README.md'))"
+	R -q -e "rsconnect::deployApp(appDir='.', appFiles=c('app.R','R'))"
 
 release: test deploy

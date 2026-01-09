@@ -12,3 +12,4 @@ docs
 
 /.quarto/
 **/*.quarto_ipynb
+rsconnect/
